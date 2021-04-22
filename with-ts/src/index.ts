@@ -1,5 +1,5 @@
 // add styles
-import './style.css';
+import './styles/index.css';
 import * as THREE from 'three';
 
 import { sample, range } from "lodash";
@@ -20,6 +20,7 @@ const renderer = new THREE.WebGLRenderer();
 renderer.autoClear = false;
 renderer.setSize(CANVAS_WIDTH, CANVAS_HEIGHT);
 document.body.appendChild(renderer.domElement); // the <canvas> element
+
 
 const axis = new THREE.AxesHelper(200);
 scene.add(axis);
@@ -42,6 +43,7 @@ dancers.forEach(b => {
   dancerGroup.add(b);
 });
 scene.add(dancerGroup);
+globalThis.testing = dancerGroup;
 const getColorSample = (() => {
   const themeOne = [0xc02942, 0xa74321, 0x295164, 0x3e3943, 0xd8eabe, 0xffffff];
   // I need bubblegum hex codes.
@@ -54,24 +56,18 @@ const getColorSample = (() => {
 
 const cameraControls = new OrbitControls(camera, renderer.domElement);
 
-let renderLightCameras = config.RENDER_LIGHT_CAMS;
-let lightCameras = range(0, 4).map((_, i) => {
+let renderLightCameras = config.RENDER_LIGHT_CAM_VIEWPORTS;
+let lightCameras = range(0, config.LIGHT_CAMERA_AMOUNT).map((_, i) => {
   return {
     cam: new LightCamera((i + 1) * 50, scene, true),
     relookAt: -Infinity,
   };
 });
 
+
 const clock = new THREE.Clock();
 
 function render() {
-
-  // psuedocode
-
-  // use a rotation matrix to set a destination quaternion for rotation (lookAt*)
-  // on frame, move light cameras towards target quaternion by a step (rotateTowards*)
-  // speed can be based with on frame clock delta
-  // apply to all lightcameras (class?*)
 
   const d = clock.getDelta();
   const now = performance.now();
@@ -82,7 +78,7 @@ function render() {
       box.material.color.setHex(getColorSample());
     }
     box.rotation.x += 0.05;
-    box.translateX(Math.sin(timer) * 1);
+    box.translateX(Math.sin(timer) * 2);
     box.translateY(Math.sin(timer) * 0.3);
   });
 
@@ -95,24 +91,17 @@ function render() {
 
   cameraControls.update();
 
-  renderer.clear();
-
-  renderer.setViewport(0, 0, window.innerWidth, window.innerHeight);
-
+  renderer.clear()
+  renderer.setViewport(0, 0, config.MAIN_VIEWPORT_WIDTH, config.MAIN_VIEWPORT_HEIGHT);
   renderer.render(scene, camera);
 
   if (renderLightCameras) {
-    renderer.setViewport(0, 0, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
-    renderer.render(scene, lightCameras[0].cam.getRawCamera());
-
-    renderer.setViewport(CANVAS_WIDTH / 2, 0, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
-    renderer.render(scene, lightCameras[1].cam.getRawCamera());
-
-    renderer.setViewport(0, CANVAS_HEIGHT / 2, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
-    renderer.render(scene, lightCameras[2].cam.getRawCamera());
-
-    renderer.setViewport(CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
-    renderer.render(scene, lightCameras[3].cam.getRawCamera());
+    lightCameras.forEach(({cam}, i) => {
+      const h = lightCameras.length / 2; // Two rows hardcode.
+      const [xPoint, yPoint, width, height] = cam.getViewportPositioning();
+      renderer.setViewport(xPoint, yPoint, width, height);
+      renderer.render(scene, cam.getRawCamera());
+    });
   }
 
 }
