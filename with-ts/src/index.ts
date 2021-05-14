@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { sample, range } from "lodash";
 
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
+// import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 
 import * as config from "./config";
 import { camera, LightCamera } from "./cameras";
@@ -15,7 +16,9 @@ const CANVAS_HEIGHT = window.innerHeight;
 
 const scene = new THREE.Scene();
 
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ alpha: true });
+// renderer.physicallyCorrectLights = true;
+renderer.setClearColor(new THREE.Color(0x441100));
 // I think renderer will always clear() before a render.
 renderer.autoClear = false;
 renderer.setSize(CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -34,16 +37,31 @@ const dancers = range(0, config.DOTS_AMOUNT).map(() => {
   );
 });
 
-const dancerSpaceDimensions = { x: config.CUBIC_SIDE, y: config.CUBIC_SIDE, z: config.CUBIC_SIDE};
+const getRandomPositionInCubicWorldSpace = () => {
+  return [
+    THREE.MathUtils.randFloatSpread(dancerSpaceDimensions.x),
+    THREE.MathUtils.randFloatSpread(dancerSpaceDimensions.y) + dancerSpaceDimensions.y / 2,
+    THREE.MathUtils.randFloatSpread(dancerSpaceDimensions.z)
+  ];
+};
+
+const dancerSpaceDimensions = { x: config.CUBIC_SIDE, y: config.CUBIC_SIDE, z: config.CUBIC_SIDE };
 const dancerGroup = new THREE.Group();
 dancers.forEach(b => {
-  b.position.x = THREE.MathUtils.randFloatSpread(dancerSpaceDimensions.x);
-  b.position.y = THREE.MathUtils.randFloatSpread(dancerSpaceDimensions.y) + dancerSpaceDimensions.y / 2;
-  b.position.z = THREE.MathUtils.randFloatSpread(dancerSpaceDimensions.z);
+  const [x, y, z] = getRandomPositionInCubicWorldSpace();
+  b.position.set(x, y, z);
   dancerGroup.add(b);
 });
 scene.add(dancerGroup);
-globalThis.testing = dancerGroup;
+
+// For team Jupiter
+// const gLoader = new GLTFLoader();
+
+// gLoader.load("src/assets/mel.gltf", (duck) => {
+//   duck.scene.scale.set(1, 1, 1);
+//   scene.add(duck.scene);
+// });
+
 const getColorSample = (() => {
   const themeOne = [0xc02942, 0xa74321, 0x295164, 0x3e3943, 0xd8eabe, 0xffffff];
   // I need bubblegum hex codes.
@@ -53,6 +71,18 @@ const getColorSample = (() => {
   const dippinDots = [0xffa23e, 0x75C2D8, 0xC4D483, 0xE0D8B9, 0xF49490, 0xE1F595, 0xFA7261];
   return () => sample(dippinDots);
 })();
+
+const testingLight = new THREE.PointLight(0xFFFFFF, 1);
+scene.add(testingLight);
+
+setInterval(() => {
+  const [x, y, z] = getRandomPositionInCubicWorldSpace();
+  testingLight.position.set(x, y, z);
+}, 3000);
+
+testingLight.power = 3000;
+testingLight.decay = 0.7;
+testingLight.distance = Infinity;
 
 const cameraControls = new OrbitControls(camera, renderer.domElement);
 
@@ -96,7 +126,7 @@ function render() {
   renderer.render(scene, camera);
 
   if (renderLightCameras) {
-    lightCameras.forEach(({cam}, i) => {
+    lightCameras.forEach(({ cam }, i) => {
       const h = lightCameras.length / 2; // Two rows hardcode.
       const [xPoint, yPoint, width, height] = cam.getViewportPositioning();
       renderer.setViewport(xPoint, yPoint, width, height);

@@ -24,7 +24,7 @@ export class LightCamera {
 
     constructor(z: number, scene: THREE.Scene, addHelperToSceneImmediately = true) {
         this.scene = scene;
-        
+
         this.camera = new THREE.PerspectiveCamera(LightCamera.FOV, ASPECT, 0.1, LightCamera.FAR);
         this.camera.position.set(7, 5, z);
 
@@ -38,7 +38,9 @@ export class LightCamera {
         this.rotationMatrix = new THREE.Matrix4();
         this.targetQuaternion = new THREE.Quaternion;
 
-        this.createSubSpaceDOMElement();
+        if (config.RENDER_LIGHT_CAM_VIEWPORTS) {
+            this.createSubSpaceDOMElement();
+        }
     }
     createSubSpaceDOMElement() {
         const w = config.LC_VIEWPORT_DIMENSIONS_W;
@@ -56,7 +58,7 @@ export class LightCamera {
     getViewportPositioning() {
         const e = this.subSpaceElement;
         return [
-            e.offsetLeft, 
+            e.offsetLeft,
             window.innerHeight - config.LC_VIEWPORT_DIMENSIONS_H - e.offsetTop,
             config.LC_VIEWPORT_DIMENSIONS_W,
             config.LC_VIEWPORT_DIMENSIONS_H
