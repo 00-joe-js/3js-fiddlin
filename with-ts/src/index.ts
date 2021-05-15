@@ -4,22 +4,22 @@ import * as THREE from 'three';
 
 import { sample, range } from "lodash";
 
-import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-// import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { FlyControls } from "three/examples/jsm/controls/FlyControls";
 
 import * as config from "./config";
 import { camera, LightCamera } from "./cameras";
 
+import skybox from "./meshes/skybox-cube";
+
+import raycaster from "./raycaster";
 
 const CANVAS_WIDTH = window.innerWidth;
 const CANVAS_HEIGHT = window.innerHeight;
 
 const scene = new THREE.Scene();
 
-const renderer = new THREE.WebGLRenderer({ alpha: true });
-// renderer.physicallyCorrectLights = true;
+const renderer = new THREE.WebGLRenderer();
 renderer.setClearColor(new THREE.Color(0x441100));
-// I think renderer will always clear() before a render.
 renderer.autoClear = false;
 renderer.setSize(CANVAS_WIDTH, CANVAS_HEIGHT);
 document.body.appendChild(renderer.domElement); // the <canvas> element
@@ -32,7 +32,7 @@ axis.layers.enable(1);
 
 const dancers = range(0, config.DOTS_AMOUNT).map(() => {
   return new THREE.Mesh(
-    new THREE.SphereGeometry(20, 20, 30),
+    new THREE.SphereGeometry(config.DOT_SIZE, config.DOT_SIZE / 2, config.DOT_SIZE / 2),
     new THREE.MeshBasicMaterial()
   );
 });
@@ -54,13 +54,9 @@ dancers.forEach(b => {
 });
 scene.add(dancerGroup);
 
-// For team Jupiter
-// const gLoader = new GLTFLoader();
+dancerGroup.position.y = dancerGroup.position.y - (config.CUBIC_SIDE / 2);
 
-// gLoader.load("src/assets/mel.gltf", (duck) => {
-//   duck.scene.scale.set(1, 1, 1);
-//   scene.add(duck.scene);
-// });
+scene.add(skybox);
 
 const getColorSample = (() => {
   const themeOne = [0xc02942, 0xa74321, 0x295164, 0x3e3943, 0xd8eabe, 0xffffff];
@@ -72,19 +68,12 @@ const getColorSample = (() => {
   return () => sample(dippinDots);
 })();
 
-const testingLight = new THREE.PointLight(0xFFFFFF, 1);
-scene.add(testingLight);
 
-setInterval(() => {
-  const [x, y, z] = getRandomPositionInCubicWorldSpace();
-  testingLight.position.set(x, y, z);
-}, 3000);
-
-testingLight.power = 3000;
-testingLight.decay = 0.7;
-testingLight.distance = Infinity;
-
-const cameraControls = new OrbitControls(camera, renderer.domElement);
+const cameraControls = new FlyControls(camera, renderer.domElement);
+cameraControls.autoForward = true;
+cameraControls.rollSpeed = 0.1;
+cameraControls.movementSpeed = 3000;
+cameraControls.autoForward = false;
 
 let renderLightCameras = config.RENDER_LIGHT_CAM_VIEWPORTS;
 let lightCameras = range(0, config.LIGHT_CAMERA_AMOUNT).map((_, i) => {
@@ -94,6 +83,18 @@ let lightCameras = range(0, config.LIGHT_CAMERA_AMOUNT).map((_, i) => {
   };
 });
 
+const mouse = new THREE.Vector2();
+window.addEventListener('mousemove', (e) => {
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = - (e.clientY / window.innerHeight) * 2 + 1;
+  raycaster.setFromCamera(mouse, camera);
+  const intersects = raycaster.intersectObjects(dancerGroup.children);
+  intersects.forEach(intersection => {
+    intersection.object.scale.x = 5;
+    intersection.object.scale.y = 5;
+    intersection.object.scale.z = 5;
+  });
+});
 
 const clock = new THREE.Clock();
 
@@ -103,13 +104,12 @@ function render() {
   const now = performance.now();
 
   const timer = 0.002 * now;
-  dancers.forEach((box) => {
+  dancers.forEach((dot) => {
     if (Math.random() < .1) {
-      box.material.color.setHex(getColorSample());
+      dot.material.color.setHex(getColorSample());
     }
-    box.rotation.x += 0.05;
-    box.translateX(Math.sin(timer) * 2);
-    box.translateY(Math.sin(timer) * 0.3);
+    dot.translateX(Math.sin(timer) * 2);
+    dot.translateY(Math.sin(timer) * 10);
   });
 
   lightCameras.forEach(lightCamera => {
@@ -119,10 +119,11 @@ function render() {
     lightCamera.relookAt = now + THREE.MathUtils.randInt(5000, 10000);
   });
 
-  cameraControls.update();
+  cameraControls.update(d);
 
   renderer.clear()
   renderer.setViewport(0, 0, config.MAIN_VIEWPORT_WIDTH, config.MAIN_VIEWPORT_HEIGHT);
+
   renderer.render(scene, camera);
 
   if (renderLightCameras) {
@@ -133,7 +134,6 @@ function render() {
       renderer.render(scene, cam.getRawCamera());
     });
   }
-
 }
 
 function animate() {

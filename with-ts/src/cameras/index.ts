@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import * as config from "../config";
 const ASPECT = config.MAIN_VIEWPORT_WIDTH / config.MAIN_VIEWPORT_HEIGHT;
 
-export const camera = new THREE.PerspectiveCamera(75, ASPECT, 0.1, 100000);
+export const camera = new THREE.PerspectiveCamera(30, ASPECT, 16/9, 1000000000);
 camera.layers.enable(1); // Assign also to layer 1 so it can see the camera helpers.
 
 export class LightCamera {
@@ -88,9 +88,9 @@ export class LightCamera {
 }
 
 const co = {
-    "x": 5000,
-    "y": 2000,
-    "z": 1500
+    "x": 0,
+    "y": 0,
+    "z": 0
 };
 
 camera.position.set(
